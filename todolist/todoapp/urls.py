@@ -8,4 +8,6 @@ urlpatterns = [
     path('logout/', views.custom_logout, name='logout'),
     path('register/', views.register, name="register"),
     # path('logout/', views.logout_page, name="logout"),
+    # path('profile/<username>', views.profile, name='profile'),
+    path('activate/<uidb64>/<token>', views.activate, name='activate'),
 ]
