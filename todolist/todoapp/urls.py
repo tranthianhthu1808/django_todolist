@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views 
+from .views import register
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -14,4 +15,7 @@ urlpatterns = [
     path("password_change", views.password_change, name="password_change"),
     path("password_reset", views.password_reset_request, name="password_reset"),
     path('reset/<uidb64>/<token>', views.passwordResetConfirm, name='password_reset_confirm'),
+    path('register/', register, name='register'),
+    # Thêm các URL khác nếu cần thiết
 ]
+

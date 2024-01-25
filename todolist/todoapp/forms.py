@@ -49,3 +49,4 @@ class PasswordResetForm(PasswordResetForm):
         super(PasswordResetForm, self).__init__(*args, **kwargs)
 
     # captcha = ReCaptchaField(widget=ReCaptchaV2Checkbox())
+        

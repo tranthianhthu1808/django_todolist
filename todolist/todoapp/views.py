@@ -23,7 +23,8 @@ def index(request):
 
     if request.method == 'POST':
         new_todo = Todo(
-            title = request.POST['title']
+            title = request.POST['title'],
+        
         )
         new_todo.save()
         return redirect('/')
@@ -70,11 +71,17 @@ def register(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active=False
-            user.save()
-            activateEmail(request, user, form.cleaned_data.get('email'))
-            return redirect('index')
+            email = form.cleaned_data['email']
+
+            if user.objects.filter(email=email).exists():
+                messages.info(request, "This Email is already existed!")
+                return redirect('/')
+            else:
+                user = form.save(commit=False)
+                user.is_active=False
+                user.save()
+                activateEmail(request, user, form.cleaned_data.get('email'))
+                return redirect('index')
 
         else:
             for error in list(form.errors.values()):

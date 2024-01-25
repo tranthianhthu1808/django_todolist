@@ -29,3 +29,4 @@ class Todo(models.Model):
 
     class Meta:
         ordering = ['complete']
+
