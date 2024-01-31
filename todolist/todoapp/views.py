@@ -1,87 +1,112 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import Todo
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from .models import *
+from .forms import *
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib import messages
-from .decorators import user_not_authenticated
-# from django.contrib import six
-from django.contrib.sites.shortcuts import get_current_site
-from .tokens import account_activation_token
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from django.template.loader import render_to_string
+from .tokens import account_activation_token
 from django.core.mail import EmailMessage
-from .forms import UserRegistrationForm, UserLoginForm, UserUpdateForm, SetPasswordForm, PasswordResetForm
+from django.template.loader import render_to_string
+from django.contrib.sites.shortcuts import get_current_site
+from .forms import UserLoginForm, UserRegistrationForm, UserUpdateForm
+from django.contrib.auth.forms import AuthenticationForm, SetPasswordForm, PasswordResetForm
 from django.db.models.query_utils import Q
+from datetime import datetime, timedelta
+from django.contrib.auth.models import User
 
-# Create your views here. 
 
-def index(request):
-    todo = Todo.objects.all()
+# Create your views here.
+#to do manage
+def index(request): 
+    # todo = Todo.objects.filter()
+    # if request.method == 'POST':
+    #     new_todo = Todo(
+    #         title = request.POST['title'],
+    #         finish_date = request.POST['finish_date']
+    #     )
+    #     new_todo.save()
+    #     return redirect('index')
+    # return render(request, 'app/index.html', {'todos': todo})
+    if not request.user.is_authenticated:
+        messages.error(request, 'Please login to continue your work!')
+        return redirect('login')  # Thay 'login' bằng URL đến trang đăng nhập của bạn
+
+    todos = Todo.objects.filter(user=request.user)
 
     if request.method == 'POST':
         new_todo = Todo(
-            title = request.POST['title'],
-        
+            title=request.POST['title'],
+            finish_date=request.POST['finish_date'],
+            
+            user=request.user
         )
         new_todo.save()
-        return redirect('/')
-    return render(request, 'app/index.html', {'todos': todo})
+        return redirect('index')
 
-# def index(request):
-#     return render(request, 'app/index.html')
+    return render(request, 'app/index.html', {'todos': todos})
 
 def delete(request, pk):
     todo = Todo.objects.get(id=pk)
     todo.delete()
     return redirect('/')
 
-# Create your views here.
-# def register(request):
-#     form = CreateUserForm()
-#     if request.method == "POST":
-#         form = CreateUserForm(request.POST)
+
+
+
+# def update_todo(request, todo_id):
+#     # Lấy todo cần cập nhật hoặc trả về 404 nếu không tìm thấy
+#     todo = get_object_or_404(Todo, id=todo_id, user=request.user)
+
+#     if request.method == 'POST':
+#         # Nếu là POST request, xử lý dữ liệu form được submit
+#         form = TodoUpdateForm(request.POST, instance=todo)
 #         if form.is_valid():
 #             form.save()
-#     context = {'form': form}
-#     return render(request, 'app/register.html', context)
-# def login_page(request):
-#     # if request.user.is_authenticated:
-#     #     return redirect('index.html')
-#     # if request.method == "POST":
-#     #     username = request.POST.get('username')
-#     #     password = request.POST.get('password')
-#     #     user = authenticate(request, username = username, password = password)
-#     #     if user is not None:
-#     #         login(request, user)
-#     #         return redirect('index.html')
-#     #     else:
-#     #         messages.info(request,'UserName or Password is incorrect!')
-#     # context = {}
-#     return render(request, 'app/login.html')
+#             return redirect('index')  # Chuyển hướng về trang danh sách todo sau khi cập nhật
+    # else:
+    #     # Nếu là GET request, hiển thị form với dữ liệu hiện tại của todo
+    #     form = TodoUpdateForm(instance=todo)
 
-# def logout_page(request):
-#     # logout(request)
-#     # return render(request,'app/login.html')
-#     pass
-############################################################
+    # return render(request, 'app/update_todo.html', {'form': form, 'todo': todo})
+################ User ################
 def register(request):
+    # if request.method == "POST":
+    #     form = UserRegistrationForm(request.POST)
+    #     if form.is_valid():
+    #         user = form.save(commit=False)
+    #         user.is_active=False
+    #         user.save()
+    #         activateEmail(request, user, form.cleaned_data.get('email'))
+    #         return redirect('/')
+
+    #     else:
+    #         for error in list(form.errors.values()):
+    #             messages.error(request, error)
+
+    # else:
+    #     form = UserRegistrationForm()
+
+    # return render(
+    #     request=request,
+    #     template_name="user/register.html",
+    #     context={"form": form}
+    #     )
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data['email']
-
-            if user.objects.filter(email=email).exists():
-                messages.info(request, "This Email is already existed!")
-                return redirect('/')
+            email = form.cleaned_data.get('email')
+            
+            # Check if the email already exists
+            if User.objects.filter(email=email).exists():
+                messages.error(request, 'This email is already registered.')
             else:
                 user = form.save(commit=False)
-                user.is_active=False
+                user.is_active = False
                 user.save()
-                activateEmail(request, user, form.cleaned_data.get('email'))
-                return redirect('index')
+                activateEmail(request, user, email)
+                return redirect('/')
 
         else:
             for error in list(form.errors.values()):
@@ -94,14 +119,15 @@ def register(request):
         request=request,
         template_name="app/register.html",
         context={"form": form}
-        )
+    )
 @login_required
+################### logout user #############################
 def custom_logout(request):
     logout(request)
     messages.info(request, "Logged out successfully!")
     return render(request, 'app/logout.html')
 
-
+################## login user #############################
 def custom_login(request):
     if request.user.is_authenticated:
         return redirect('/')
@@ -116,7 +142,7 @@ def custom_login(request):
             if user is not None:
                 login(request, user)
                 messages.success(request, f"Hello <b>{user.username}</b>! You have been logged in")
-                return redirect("/")
+                return redirect('/')
 
         else:
             for error in list(form.errors.values()):
@@ -126,10 +152,11 @@ def custom_login(request):
 
     return render(
         request=request,
-        template_name=("app/login.html"),
+        template_name="app/login.html",
         context={"form": form}
         )
 
+############ user activate ##############
 def activate(request, uidb64, token):
     User = get_user_model()
     try:
@@ -143,11 +170,11 @@ def activate(request, uidb64, token):
         user.save()
 
         messages.success(request, "Thank you for your email confirmation. Now you can login your account.")
-        return redirect('login')
+        return redirect('/')
     else:
         messages.error(request, "Activation link is invalid!")
 
-    return redirect('/') #homepage là cái nào mà để dô?????????????????????
+    return redirect('/')
 
 def activateEmail(request, user, to_email):
     mail_subject = "Activate your user account."
@@ -164,67 +191,9 @@ def activateEmail(request, user, to_email):
                 received activation link to confirm and complete the registration. <b>Note:</b> Check your spam folder.')
     else:
         messages.error(request, f'Problem sending email to {to_email}, check if you typed it correctly.')
-
-@user_not_authenticated
-def register(request):
-    if request.method == "POST":
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active=False
-            user.save()
-            activateEmail(request, user, form.cleaned_data.get('email'))
-            return redirect('/')#??????????????????????????
-
-        else:
-            for error in list(form.errors.values()):
-                messages.error(request, error)
-
-    else:
-        form = UserRegistrationForm()
-
-    return render(
-        request=request,
-        template_name="app/register.html",
-        context={"form": form}
-        )
-
-@login_required
-def custom_logout(request):
-    logout(request)
-    messages.info(request, "Logged out successfully!")
-    return redirect("/")
-
-@user_not_authenticated
-def custom_login(request):
-    if request.method == "POST":
-        form = UserLoginForm(request=request, data=request.POST)
-        if form.is_valid():
-            user = authenticate(
-                username=form.cleaned_data["username"],
-                password=form.cleaned_data["password"],
-            )
-            if user is not None:
-                login(request, user)
-                messages.success(request, f"Hello <b>{user.username}</b>! You have been logged in")
-                return redirect("/")
-
-        else:
-            for key, error in list(form.errors.items()):
-                if key == 'captcha' and error[0] == 'This field is required.':
-                    messages.error(request, "You must pass the reCAPTCHA test")
-                    continue
-                
-                messages.error(request, error) 
-
-    form = UserLoginForm()
-
-    return render(
-        request=request,
-        template_name="app/login.html",
-        context={"form": form}
-        )
-
+#################################################################
+# other things 
+#################### user info ############
 def profile(request, username):
     if request.method == "POST":
         user = request.user
@@ -240,16 +209,22 @@ def profile(request, username):
     user = get_user_model().objects.filter(username=username).first()
     if user:
         form = UserUpdateForm(instance=user)
-        form.fields['description'].widget.attrs = {'rows': 1}
+        # form.fields['description'].widget.attrs = {'rows': 1}
         return render(
             request=request,
             template_name="app/profile.html",
             context={"form": form}
             )
     
-    return redirect("/") #?????????????????????????????????????????????
+    return redirect("/")
 
-@login_required
+######### unauth homepage ############
+def unauth_home(request):
+    if request.user.is_authenticated:
+        return render(request, 'app/todo_list.html')
+    return render(request, 'main/home.html')
+    
+####################### change password ################
 def password_change(request):
     user = request.user
     if request.method == 'POST':
@@ -263,9 +238,9 @@ def password_change(request):
                 messages.error(request, error)
 
     form = SetPasswordForm(user)
-    return render(request, 'password_reset_confirm.html', {'form': form})
+    return render(request, 'app/pass_reset_confirm.html', {'form': form})
 
-@user_not_authenticated
+
 def password_reset_request(request):
     if request.method == 'POST':
         form = PasswordResetForm(request.POST)
@@ -274,7 +249,7 @@ def password_reset_request(request):
             associated_user = get_user_model().objects.filter(Q(email=user_email)).first()
             if associated_user:
                 subject = "Password Reset request"
-                message = render_to_string("app/template_reset_password.html", {
+                message = render_to_string("app/template_pass_reset.html", {
                     'user': associated_user,
                     'domain': get_current_site(request).domain,
                     'uid': urlsafe_base64_encode(force_bytes(associated_user.pk)),
@@ -296,17 +271,12 @@ def password_reset_request(request):
                 else:
                     messages.error(request, "Problem sending reset password email, <b>SERVER PROBLEM</b>")
 
-            return redirect('/')#?????????????????????????????????????
-
-        for key, error in list(form.errors.items()):
-            if key == 'captcha' and error[0] == 'This field is required.':
-                messages.error(request, "You must pass the reCAPTCHA test")
-                continue
+            return redirect('/')
 
     form = PasswordResetForm()
     return render(
         request=request, 
-        template_name="app/password_reset.html", 
+        template_name="app/pass_reset.html", 
         context={"form": form}
         )
 
@@ -324,15 +294,15 @@ def passwordResetConfirm(request, uidb64, token):
             if form.is_valid():
                 form.save()
                 messages.success(request, "Your password has been set. You may go ahead and <b>log in </b> now.")
-                return redirect('/')#???????????????????????????????????????????
+                return redirect('/')
             else:
                 for error in list(form.errors.values()):
                     messages.error(request, error)
 
         form = SetPasswordForm(user)
-        return render(request, 'app/password_reset_confirm.html', {'form': form})
+        return render(request, 'app/pass_reset_confirm.html', {'form': form})
     else:
         messages.error(request, "Link is expired")
 
     messages.error(request, 'Something went wrong, redirecting back to Homepage')
-    return redirect("/")#????????????????????????????????????????
+    return redirect("/")

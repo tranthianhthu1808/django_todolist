@@ -1,8 +1,11 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, SetPasswordForm, PasswordResetForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import get_user_model
-# from captcha.fields import ReCaptchaField
-# from captcha.widgets import ReCaptchaV2Checkbox
+# from captcha import ReCaptchaField
+# from captcha import ReCaptchaV2Checkbox
+# from django_recaptcha.fields import ReCaptchaField
+# from django_recaptcha.widgets import ReCaptchaV2Checkbox
+from .models import Todo
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -10,7 +13,7 @@ class UserRegistrationForm(UserCreationForm):
 
     class Meta:
         model = get_user_model()
-        fields = [ 'username', 'email', 'password1', 'password2']
+        fields = ['first_name', 'last_name', 'username', 'email', 'password1', 'password2']
 
     def save(self, commit=True):
         user = super(UserRegistrationForm, self).save(commit=False)
@@ -39,14 +42,12 @@ class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = get_user_model()
         fields = ['first_name', 'last_name', 'email']
-class SetPasswordForm(SetPasswordForm):
+
+# forms.py
+
+class TodoUpdateForm(forms.ModelForm):
     class Meta:
-        model = get_user_model()
-        fields = ['new_password1', 'new_password2']
+        model = Todo
+        fields = ['title', 'finish_date','complete']  # Chọn các trường muốn cập nhật
 
-class PasswordResetForm(PasswordResetForm):
-    def __init__(self, *args, **kwargs):
-        super(PasswordResetForm, self).__init__(*args, **kwargs)
-
-    # captcha = ReCaptchaField(widget=ReCaptchaV2Checkbox())
-        
+    # Bạn có thể thêm validation hoặc customization khác nếu cần

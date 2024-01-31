@@ -21,9 +21,11 @@ from todoapp import urls
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('todoapp.urls')),
-    # path('register/', app.register, name="register"),
+    path('register/', app.register, name="register"),
     # path('', app.index, name="index"),
-    # path('logout/', app.custom_logout, name="logout"),
-    # path('login/', app.custom_login, name="login"),
+    path('logout/', app.custom_logout, name="logout"),
+    path('login/', app.custom_login, name="login"),
+    path('activate/<uidb64>/<token>', app.activate, name='activate')
+
 
 ]
